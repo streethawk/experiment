@@ -1,0 +1,201 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, staging, main]
+  pull_request:
+    branches: [develop, staging, main]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+
+  # ─── Type check, lint, unit tests ─────────────────────────────────────────
+  validate:
+    name: Validate (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck --filter=@carecore/${{ matrix.app }}
+
+      - name: Lint
+        run: npm run lint --filter=@carecore/${{ matrix.app }}
+
+      - name: Unit tests
+        run: npm run test --filter=@carecore/${{ matrix.app }}
+
+  # ─── API Integration tests (with real DB) ─────────────────────────────────
+  integration:
+    name: Integration tests (API)
+    runs-on: ubuntu-latest
+    needs: validate
+
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_USER: carecore_test
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: carecore_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run DB migrations
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://carecore_test:test_password@localhost:5432/carecore_test
+        run: npx prisma migrate deploy
+
+      - name: Run integration tests
+        working-directory: apps/api
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://carecore_test:test_password@localhost:5432/carecore_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test_jwt_secret_at_least_64_characters_long_for_hs256_algorithm
+          JWT_REFRESH_SECRET: test_refresh_secret_at_least_64_characters_long_for_testing
+        run: npm run test:e2e
+
+  # ─── Security scanning ────────────────────────────────────────────────────
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Run Trivy (secrets + vulnerabilities)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+  # ─── Build Docker images ──────────────────────────────────────────────────
+  build:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+    needs: [validate, security]
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          REPO=${{ secrets.ECR_REGISTRY }}/carecore-api
+          docker build -t $REPO:$IMAGE_TAG -t $REPO:latest apps/api
+          docker push $REPO:$IMAGE_TAG
+          docker push $REPO:latest
+
+      - name: Build and push Web image
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          REPO=${{ secrets.ECR_REGISTRY }}/carecore-web
+          docker build -t $REPO:$IMAGE_TAG -t $REPO:latest apps/web
+          docker push $REPO:$IMAGE_TAG
+          docker push $REPO:latest
+
+  # ─── Deploy to staging ────────────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging'
+    environment: staging
+
+    steps:
+      - name: Deploy to ECS (Staging)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: .aws/task-definition-staging.json
+          service: carecore-api-staging
+          cluster: carecore-staging
+          wait-for-service-stability: true
+
+  # ─── Deploy to Production (manual approval required) ──────────────────────
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: production    # requires manual approval in GitHub
+
+    steps:
+      - name: Deploy to ECS (Production)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: .aws/task-definition-production.json
+          service: carecore-api-production
+          cluster: carecore-production
+          wait-for-service-stability: true

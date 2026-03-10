@@ -1,0 +1,147 @@
+version: '3.9'
+
+# CareCore — Local Development Stack
+# Mirrors production AWS architecture locally
+
+services:
+
+  # ─── PostgreSQL (primary database) ────────────────────────────────────────
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: carecore-postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: carecore
+      POSTGRES_PASSWORD: carecore_dev_password
+      POSTGRES_DB: carecore
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U carecore -d carecore']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis (sessions, cache, BullMQ) ──────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: carecore-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    command: redis-server --requirepass carecore_redis_dev
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '--no-auth-warning', '-a', 'carecore_redis_dev', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── OpenSearch (audit logs, full-text search) ─────────────────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    container_name: carecore-opensearch
+    restart: unless-stopped
+    ports:
+      - '9200:9200'
+      - '9600:9600'
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true   # dev only — enable in staging/prod
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+
+  # ─── MinIO (local S3 equivalent) ──────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: carecore-minio
+    restart: unless-stopped
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      MINIO_ROOT_USER: carecore_minio
+      MINIO_ROOT_PASSWORD: carecore_minio_dev
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ─── MailHog (local email catcher) ────────────────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: carecore-mailhog
+    restart: unless-stopped
+    ports:
+      - '1025:1025'   # SMTP
+      - '8025:8025'   # Web UI
+
+  # ─── API (NestJS) ─────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile.dev
+    container_name: carecore-api
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://carecore:carecore_dev_password@postgres:5432/carecore
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: carecore_redis_dev
+      JWT_SECRET: dev_jwt_secret_change_in_production_min_64_chars
+      JWT_REFRESH_SECRET: dev_refresh_secret_change_in_production_min_64_chars
+      JWT_EXPIRY: 900
+      JWT_REFRESH_EXPIRY: 28800
+      AWS_REGION: eu-west-2
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: carecore-documents
+      S3_ACCESS_KEY: carecore_minio
+      S3_SECRET_KEY: carecore_minio_dev
+      SES_ENDPOINT: http://mailhog:1025
+      OPENSEARCH_URL: http://opensearch:9200
+      ALLOWED_ORIGINS: '["http://localhost:3001","http://localhost:3002"]'
+    volumes:
+      - ../../apps/api/src:/app/src    # hot reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Web App (Next.js) ────────────────────────────────────────────────────
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile.dev
+    container_name: carecore-web
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000/v1
+      NEXT_PUBLIC_WS_URL: ws://localhost:3000
+      NEXT_PUBLIC_ENV: development
+    volumes:
+      - ../../apps/web/src:/app/src    # hot reload
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+  opensearch_data:
+  minio_data:

@@ -1,0 +1,872 @@
+// CareCore — Prisma Schema
+// PostgreSQL 16, UK data residency (AWS eu-west-2)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions", "fullTextSearch"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgcrypto, pg_trgm, uuidOssp(map: "uuid-ossp")]
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum SubscriptionTier { starter professional enterprise }
+enum OrgType           { single_home care_group nhs_trust }
+enum CqcRating         { outstanding good requires_improvement inadequate not_yet_rated }
+enum CareTypeEnum      { residential nursing dementia emi learning_disability physical_disability respite }
+enum RoomType          { single double ensuite shared }
+
+enum ResidentStatus    { active hospital respite leave discharged deceased }
+enum Gender            { male female non_binary prefer_not_to_say }
+enum FundingSourceType { self_funded local_authority chc chc_fast_track nhs_fnc mixed deferred_payment }
+enum ResidentCareType  { residential nursing dementia emi respite end_of_life }
+enum AdmissionSource   { hospital_discharge home other_care_home self_referral la_referral nhs_referral }
+enum AllergySeverity   { mild moderate severe life_threatening }
+enum DolsStatus        { not_required application_pending granted refused expired withdrawn }
+enum CarePlanStatus    { draft current superseded archived }
+enum RiskType          { falls waterlow must cognitive_mmse moving_handling skin_integrity choking behaviour self_neglect financial }
+enum RiskLevel         { low medium high very_high }
+
+enum MedicationRoute      { oral sublingual topical transdermal subcutaneous intramuscular intravenous inhaled rectal ophthalmic otic nasal nebulised }
+enum MedicationFrequency  { once_daily twice_daily three_times_daily four_times_daily every_4_hours every_6_hours every_8_hours every_12_hours weekly fortnightly monthly when_required stat other }
+enum MedicationStatus     { active on_hold discontinued completed }
+enum MarOutcome           { given refused not_available away unable not_required self_administered }
+enum CdAction             { stock_received administered wasted returned destroyed transferred }
+
+enum CareNoteShift        { early late night }
+enum CareNoteCategory     { personal_care nutrition hydration medication mobility continence sleep mood_behaviour medical social_activity wound_care repositioning handover general }
+enum WoundStatus          { open healing healed deteriorating }
+
+enum IncidentType          { fall medication_error safeguarding injury near_miss complaint infection pressure_ulcer elopement aggression unexpected_death other }
+enum IncidentSeverity      { low medium high critical }
+enum IncidentStatus        { open under_review pending_cqc closed }
+enum SafeguardingStatus    { concern_raised referral_submitted strategy_meeting investigation closed_substantiated closed_unsubstantiated }
+
+enum VitalType             { blood_pressure pulse oxygen_saturation temperature weight blood_glucose respiration_rate pain_score }
+enum VitalSource           { manual iot_device imported }
+
+enum StaffRole             { carer senior_carer nurse activities_coordinator home_manager registered_manager chef maintenance finance_admin administrator group_admin }
+enum EmploymentType        { full_time part_time bank agency volunteer }
+enum StaffStatus           { active on_leave sick suspended terminated }
+enum TrainingType          { mandatory recommended specialist induction }
+enum ShiftType             { early late night split custom }
+enum ShiftStatus           { scheduled confirmed in_progress completed absent cancelled }
+enum ClockMethod           { pin qr_code nfc manual biometric }
+
+enum ContractStatus        { active terminated suspended }
+enum InvoiceStatus         { draft sent paid partial overdue void written_off }
+enum PaymentMethod         { bank_transfer cheque card direct_debit standing_order la_bacs }
+
+enum InventoryCategory     { ppe clinical_consumables medication_stock food_drink cleaning laundry equipment office activities }
+enum InventoryStatus       { ok low critical out_of_stock discontinued }
+enum PoStatus              { draft sent partially_received received cancelled }
+
+enum AuditType             { medication care_plan environment health_safety infection_control mca_dols safeguarding staff_files call_bell_response moving_handling }
+enum DocumentType          { care_plan risk_assessment incident_report consent_form dnar lpa dols mca_assessment advance_care_plan contract invoice id_document medical_letter discharge_summary training_certificate policy other }
+enum UserRole              { platform_admin group_admin home_manager registered_manager senior_carer carer nurse finance_admin family_member gp_external }
+enum NotificationType      { alert task message system reminder }
+enum NotificationPriority  { low medium high critical }
+
+// ─── Tenant Foundation ────────────────────────────────────────────────────────
+
+model Organisation {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String           @db.VarChar(255)
+  type                OrgType          @default(single_home)
+  subscriptionTier    SubscriptionTier @default(starter) @map("subscription_tier")
+  subscriptionStart   DateTime?        @map("subscription_start") @db.Date
+  subscriptionEnd     DateTime?        @map("subscription_end") @db.Date
+  billingEmail        String?          @map("billing_email") @db.VarChar(255)
+  icoRegistrationRef  String?          @map("ico_registration_ref") @db.VarChar(50)
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  deletedAt           DateTime?        @map("deleted_at")
+
+  homes               Home[]
+  staff               Staff[]
+  residents           Resident[]
+
+  @@map("organisations")
+}
+
+model Home {
+  id                       String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organisationId           String      @map("organisation_id") @db.Uuid
+  name                     String      @db.VarChar(255)
+  cqcRegistrationNumber    String?     @unique @map("cqc_registration_number") @db.VarChar(20)
+  addressLine1             String      @map("address_line1") @db.VarChar(255)
+  addressLine2             String?     @map("address_line2") @db.VarChar(255)
+  city                     String      @db.VarChar(100)
+  postcode                 String      @db.VarChar(10)
+  phone                    String?     @db.VarChar(20)
+  email                    String?     @db.VarChar(255)
+  bedCapacity              Int         @map("bed_capacity") @db.SmallInt
+  careTypes                CareTypeEnum[] @map("care_types")
+  registeredManagerId      String?     @map("registered_manager_id") @db.Uuid
+  lastCqcInspectionDate    DateTime?   @map("last_cqc_inspection_date") @db.Date
+  lastCqcRating            CqcRating   @default(not_yet_rated) @map("last_cqc_rating")
+  settings                 Json        @default("{}")
+  createdAt                DateTime    @default(now()) @map("created_at")
+  updatedAt                DateTime    @updatedAt @map("updated_at")
+  deletedAt                DateTime?   @map("deleted_at")
+
+  organisation             Organisation @relation(fields: [organisationId], references: [id])
+  wings                    Wing[]
+  rooms                    Room[]
+  residents                Resident[]
+  staff                    Staff[]
+  incidents                Incident[]
+  inventoryItems           InventoryItem[]
+  invoices                 Invoice[]
+  shifts                   Shift[]
+  complianceAudits         ComplianceAudit[]
+
+  @@map("homes")
+}
+
+model Wing {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  homeId      String  @map("home_id") @db.Uuid
+  name        String  @db.VarChar(100)
+  floor       Int?    @db.SmallInt
+  description String? @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  home        Home    @relation(fields: [homeId], references: [id])
+  rooms       Room[]
+
+  @@map("wings")
+}
+
+model Room {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wingId      String   @map("wing_id") @db.Uuid
+  homeId      String   @map("home_id") @db.Uuid
+  roomNumber  String   @map("room_number") @db.VarChar(20)
+  roomType    RoomType @default(single) @map("room_type")
+  floor       Int?     @db.SmallInt
+  bedCount    Int      @default(1) @map("bed_count") @db.SmallInt
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  wing        Wing     @relation(fields: [wingId], references: [id])
+  home        Home     @relation(fields: [homeId], references: [id])
+  residents   Resident[]
+
+  @@unique([homeId, roomNumber])
+  @@map("rooms")
+}
+
+// ─── Residents ────────────────────────────────────────────────────────────────
+
+model Resident {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  homeId              String           @map("home_id") @db.Uuid
+  organisationId      String           @map("organisation_id") @db.Uuid
+  roomId              String?          @map("room_id") @db.Uuid
+
+  fullName            String           @map("full_name") @db.VarChar(255)
+  preferredName       String?          @map("preferred_name") @db.VarChar(100)
+  dateOfBirth         DateTime         @map("date_of_birth") @db.Date
+  gender              Gender?
+  ethnicity           String?          @db.VarChar(100)
+  religion            String?          @db.VarChar(100)
+  firstLanguage       String?          @map("first_language") @db.VarChar(100)
+  interpreterRequired Boolean          @default(false) @map("interpreter_required")
+  photoS3Key          String?          @map("photo_s3_key") @db.VarChar(500)
+
+  nhsNumber           String?          @map("nhs_number") @db.VarChar(10)
+  gpName              String?          @map("gp_name") @db.VarChar(255)
+  gpPractice          String?          @map("gp_practice") @db.VarChar(255)
+  gpPhone             String?          @map("gp_phone") @db.VarChar(20)
+  gpAddress           String?          @map("gp_address")
+
+  status              ResidentStatus   @default(active)
+  careType            ResidentCareType @map("care_type")
+  admissionDate       DateTime         @map("admission_date") @db.Date
+  admissionSource     AdmissionSource? @map("admission_source")
+  dischargeDate       DateTime?        @map("discharge_date") @db.Date
+  dischargeTo         String?          @map("discharge_to") @db.VarChar(100)
+  dischargeReason     String?          @map("discharge_reason")
+  keyworkerId         String?          @map("keyworker_id") @db.Uuid
+
+  primaryFundingSource FundingSourceType @default(self_funded) @map("primary_funding_source")
+
+  dnarInPlace         Boolean          @default(false) @map("dnar_in_place")
+  dnarSignedDate      DateTime?        @map("dnar_signed_date") @db.Date
+  mcaLacksCapacity    Boolean?         @map("mca_lacks_capacity")
+
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  deletedAt           DateTime?        @map("deleted_at")
+
+  home                Home             @relation(fields: [homeId], references: [id])
+  organisation        Organisation     @relation(fields: [organisationId], references: [id])
+  room                Room?            @relation(fields: [roomId], references: [id])
+  contacts            ResidentContact[]
+  allergies           Allergy[]
+  diagnoses           Diagnosis[]
+  dolsRecords         DolsRecord[]
+  mcaAssessments      McaAssessment[]
+  carePlans           CarePlan[]
+  riskAssessments     RiskAssessment[]
+  medications         Medication[]
+  marEntries          MarEntry[]
+  careNotes           CareNote[]
+  wounds              Wound[]
+  incidents           Incident[]
+  vitals              Vital[]
+  vitalTargets        VitalTarget?
+  contracts           ResidentContract[]
+  fundingSources      FundingSource[]
+  invoices            Invoice[]
+
+  @@map("residents")
+}
+
+model ResidentContact {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId          String   @map("resident_id") @db.Uuid
+  name                String   @db.VarChar(255)
+  relationship        String   @db.VarChar(100)
+  phonePrimary        String?  @map("phone_primary") @db.VarChar(20)
+  phoneSecondary      String?  @map("phone_secondary") @db.VarChar(20)
+  email               String?  @db.VarChar(255)
+  address             String?
+  isPrimaryNok        Boolean  @default(false) @map("is_primary_nok")
+  hasLpaWelfare       Boolean  @default(false) @map("has_lpa_welfare")
+  hasLpaFinance       Boolean  @default(false) @map("has_lpa_finance")
+  isFamilyPortalUser  Boolean  @default(false) @map("is_family_portal_user")
+  notes               String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  resident            Resident @relation(fields: [residentId], references: [id])
+
+  @@map("resident_contacts")
+}
+
+model Allergy {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId  String          @map("resident_id") @db.Uuid
+  substance   String          @db.VarChar(255)
+  reaction    String
+  severity    AllergySeverity
+  notes       String?
+  recordedBy  String          @map("recorded_by") @db.Uuid
+  recordedAt  DateTime        @default(now()) @map("recorded_at")
+  isActive    Boolean         @default(true) @map("is_active")
+
+  resident    Resident        @relation(fields: [residentId], references: [id])
+
+  @@map("allergies")
+}
+
+// ─── Care Plans ───────────────────────────────────────────────────────────────
+
+model CarePlan {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId      String        @map("resident_id") @db.Uuid
+  homeId          String        @map("home_id") @db.Uuid
+  version         Int           @default(1) @db.SmallInt
+  status          CarePlanStatus @default(draft)
+  sections        Json          @default("{}")
+  createdBy       String        @map("created_by") @db.Uuid
+  approvedBy      String?       @map("approved_by") @db.Uuid
+  approvedAt      DateTime?     @map("approved_at")
+  nextReviewDate  DateTime?     @map("next_review_date") @db.Date
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  resident        Resident      @relation(fields: [residentId], references: [id])
+
+  @@map("care_plans")
+}
+
+model RiskAssessment {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId  String     @map("resident_id") @db.Uuid
+  homeId      String     @map("home_id") @db.Uuid
+  type        RiskType
+  score       Int?       @db.SmallInt
+  riskLevel   RiskLevel  @map("risk_level")
+  details     Json       @default("{}")
+  assessedBy  String     @map("assessed_by") @db.Uuid
+  assessedAt  DateTime   @map("assessed_at")
+  validUntil  DateTime?  @map("valid_until") @db.Date
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  resident    Resident   @relation(fields: [residentId], references: [id])
+
+  @@map("risk_assessments")
+}
+
+// ─── Medications & MAR ────────────────────────────────────────────────────────
+
+model Medication {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId          String              @map("resident_id") @db.Uuid
+  homeId              String              @map("home_id") @db.Uuid
+  drugName            String              @map("drug_name") @db.VarChar(255)
+  form                String?             @db.VarChar(100)
+  strength            String?             @db.VarChar(50)
+  dose                String              @db.VarChar(100)
+  route               MedicationRoute
+  frequency           MedicationFrequency
+  times               DateTime[]          @db.Time
+  indication          String?
+  instructions        String?
+  isPrn               Boolean             @default(false) @map("is_prn")
+  prnCriteria         String?             @map("prn_criteria")
+  isControlledDrug    Boolean             @default(false) @map("is_controlled_drug")
+  controlledDrugSchedule Int?            @map("controlled_drug_schedule") @db.SmallInt
+  prescribedBy        String?             @map("prescribed_by") @db.VarChar(255)
+  prescribedDate      DateTime?           @map("prescribed_date") @db.Date
+  reviewDate          DateTime?           @map("review_date") @db.Date
+  stockOnHand         Decimal?            @map("stock_on_hand") @db.Decimal(10, 2)
+  status              MedicationStatus    @default(active)
+  discontinuedDate    DateTime?           @map("discontinued_date") @db.Date
+  discontinuedBy      String?             @map("discontinued_by") @db.Uuid
+  discontinuedReason  String?             @map("discontinued_reason")
+  createdBy           String              @map("created_by") @db.Uuid
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  resident            Resident            @relation(fields: [residentId], references: [id])
+  marEntries          MarEntry[]
+  cdRegister          ControlledDrugRegister[]
+
+  @@map("medications")
+}
+
+model MarEntry {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicationId    String      @map("medication_id") @db.Uuid
+  residentId      String      @map("resident_id") @db.Uuid
+  homeId          String      @map("home_id") @db.Uuid
+  scheduledTime   DateTime    @map("scheduled_time")
+  administeredAt  DateTime?   @map("administered_at")
+  outcome         MarOutcome
+  administeredBy  String      @map("administered_by") @db.Uuid
+  witnessId       String?     @map("witness_id") @db.Uuid
+  notes           String?
+  isPrn           Boolean     @default(false) @map("is_prn")
+  prnIndication   String?     @map("prn_indication")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  medication      Medication  @relation(fields: [medicationId], references: [id])
+  resident        Resident    @relation(fields: [residentId], references: [id])
+
+  @@map("mar_entries")
+}
+
+// ─── Care Notes ───────────────────────────────────────────────────────────────
+
+model CareNote {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId    String              @map("resident_id") @db.Uuid
+  homeId        String              @map("home_id") @db.Uuid
+  shift         CareNoteShift
+  categories    CareNoteCategory[]
+  note          String
+  moodScore     Int?                @map("mood_score") @db.SmallInt
+  foodIntakePct Int?                @map("food_intake_pct") @db.SmallInt
+  fluidIntakeMl Int?                @map("fluid_intake_ml") @db.SmallInt
+  isFlagged     Boolean             @default(false) @map("is_flagged")
+  flagReason    String?             @map("flag_reason")
+  editHistory   Json                @default("[]") @map("edit_history")
+  createdBy     String              @map("created_by") @db.Uuid
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  deletedAt     DateTime?           @map("deleted_at")
+
+  resident      Resident            @relation(fields: [residentId], references: [id])
+  attachments   CareNoteAttachment[]
+
+  @@map("care_notes")
+}
+
+model CareNoteAttachment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  careNoteId  String   @map("care_note_id") @db.Uuid
+  s3Key       String   @map("s3_key") @db.VarChar(500)
+  filename    String   @db.VarChar(255)
+  contentType String?  @map("content_type") @db.VarChar(100)
+  sizeBytes   Int?     @map("size_bytes")
+  createdBy   String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  careNote    CareNote @relation(fields: [careNoteId], references: [id])
+
+  @@map("care_note_attachments")
+}
+
+// ─── Incidents ────────────────────────────────────────────────────────────────
+
+model Incident {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  homeId            String          @map("home_id") @db.Uuid
+  organisationId    String          @map("organisation_id") @db.Uuid
+  reference         String          @unique @db.VarChar(30)
+  type              IncidentType
+  severity          IncidentSeverity @default(low)
+  status            IncidentStatus   @default(open)
+  residentId        String?          @map("resident_id") @db.Uuid
+  occurredAt        DateTime         @map("occurred_at")
+  location          String?          @db.VarChar(100)
+  description       String
+  immediateActions  String[]         @map("immediate_actions")
+  injurySustained   Boolean          @default(false) @map("injury_sustained")
+  injuryDescription String?          @map("injury_description")
+  familyNotified    Boolean          @default(false) @map("family_notified")
+  gpNotified        Boolean          @default(false) @map("gp_notified")
+  cqcNotifiable     Boolean          @default(false) @map("cqc_notifiable")
+  rootCause         String?          @map("root_cause")
+  actionsTaken      Json             @default("[]") @map("actions_taken")
+  reportedBy        String           @map("reported_by") @db.Uuid
+  reportedAt        DateTime         @default(now()) @map("reported_at")
+  closedAt          DateTime?        @map("closed_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  home              Home             @relation(fields: [homeId], references: [id])
+  resident          Resident?        @relation(fields: [residentId], references: [id])
+  witnesses         IncidentWitness[]
+
+  @@map("incidents")
+}
+
+model IncidentWitness {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  incidentId  String   @map("incident_id") @db.Uuid
+  staffId     String?  @map("staff_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  statement   String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  incident    Incident @relation(fields: [incidentId], references: [id])
+
+  @@map("incident_witnesses")
+}
+
+// ─── Staff ────────────────────────────────────────────────────────────────────
+
+model Staff {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organisationId      String         @map("organisation_id") @db.Uuid
+  homeId              String         @map("home_id") @db.Uuid
+  userId              String?        @unique @map("user_id") @db.Uuid
+  fullName            String         @map("full_name") @db.VarChar(255)
+  email               String         @unique @db.VarChar(255)
+  phone               String?        @db.VarChar(20)
+  role                StaffRole
+  employmentType      EmploymentType @map("employment_type")
+  contractedHoursPw   Decimal?       @map("contracted_hours_pw") @db.Decimal(5, 2)
+  startDate           DateTime       @map("start_date") @db.Date
+  endDate             DateTime?      @map("end_date") @db.Date
+  status              StaffStatus    @default(active)
+  dbsType             String?        @map("dbs_type") @db.VarChar(50)
+  dbsCertificateNo    String?        @map("dbs_certificate_no") @db.VarChar(20)
+  dbsIssueDate        DateTime?      @map("dbs_issue_date") @db.Date
+  dbsOutcome          String?        @map("dbs_outcome") @db.VarChar(20)
+  rightToWorkChecked  Boolean        @default(false) @map("right_to_work_checked")
+  nmcPin              String?        @map("nmc_pin") @db.VarChar(20)
+  nmcExpiry           DateTime?      @map("nmc_expiry") @db.Date
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  deletedAt           DateTime?      @map("deleted_at")
+
+  organisation        Organisation   @relation(fields: [organisationId], references: [id])
+  home                Home           @relation(fields: [homeId], references: [id])
+  training            StaffTraining[]
+  shifts              Shift[]
+  attendance          Attendance[]
+
+  @@map("staff")
+}
+
+model StaffTraining {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staffId         String       @map("staff_id") @db.Uuid
+  homeId          String       @map("home_id") @db.Uuid
+  courseName      String       @map("course_name") @db.VarChar(255)
+  courseType      TrainingType @map("course_type") @default(mandatory)
+  provider        String?      @db.VarChar(255)
+  completedDate   DateTime     @map("completed_date") @db.Date
+  expiryDate      DateTime?    @map("expiry_date") @db.Date
+  certificateS3Key String?     @map("certificate_s3_key") @db.VarChar(500)
+  loggedBy        String       @map("logged_by") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  staff           Staff        @relation(fields: [staffId], references: [id])
+
+  @@map("staff_training")
+}
+
+model Shift {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  homeId        String      @map("home_id") @db.Uuid
+  staffId       String      @map("staff_id") @db.Uuid
+  date          DateTime    @db.Date
+  shiftType     ShiftType   @map("shift_type")
+  startTime     DateTime    @map("start_time") @db.Time
+  endTime       DateTime    @map("end_time") @db.Time
+  breakMinutes  Int         @default(30) @map("break_minutes") @db.SmallInt
+  roleOnShift   StaffRole   @map("role_on_shift")
+  isAgency      Boolean     @default(false) @map("is_agency")
+  agencyName    String?     @map("agency_name") @db.VarChar(255)
+  status        ShiftStatus @default(scheduled)
+  notes         String?
+  createdBy     String      @map("created_by") @db.Uuid
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  home          Home        @relation(fields: [homeId], references: [id])
+  staff         Staff       @relation(fields: [staffId], references: [id])
+  attendance    Attendance?
+
+  @@map("shifts")
+}
+
+model Attendance {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shiftId         String      @unique @map("shift_id") @db.Uuid
+  staffId         String      @map("staff_id") @db.Uuid
+  clockedInAt     DateTime?   @map("clocked_in_at")
+  clockInMethod   ClockMethod? @map("clock_in_method")
+  clockedOutAt    DateTime?   @map("clocked_out_at")
+  clockOutMethod  ClockMethod? @map("clock_out_method")
+  isManualOverride Boolean    @default(false) @map("is_manual_override")
+  overrideReason  String?     @map("override_reason")
+  approvedBy      String?     @map("approved_by") @db.Uuid
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  shift           Shift       @relation(fields: [shiftId], references: [id])
+  staff           Staff       @relation(fields: [staffId], references: [id])
+
+  @@map("attendance")
+}
+
+// ─── Finance ──────────────────────────────────────────────────────────────────
+
+model ResidentContract {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId        String         @map("resident_id") @db.Uuid
+  homeId            String         @map("home_id") @db.Uuid
+  startDate         DateTime       @map("start_date") @db.Date
+  endDate           DateTime?      @map("end_date") @db.Date
+  roomRateWeekly    Decimal        @map("room_rate_weekly") @db.Decimal(10, 2)
+  careUpliftWeekly  Decimal        @default(0) @map("care_uplift_weekly") @db.Decimal(10, 2)
+  noticePeriodDays  Int            @default(28) @map("notice_period_days") @db.SmallInt
+  extras            Json           @default("[]")
+  status            ContractStatus @default(active)
+  invoiceToName     String         @map("invoice_to_name") @db.VarChar(255)
+  invoiceToAddress  String         @map("invoice_to_address")
+  invoiceToEmail    String?        @map("invoice_to_email") @db.VarChar(255)
+  signedDate        DateTime?      @map("signed_date") @db.Date
+  documentS3Key     String?        @map("document_s3_key") @db.VarChar(500)
+  createdBy         String         @map("created_by") @db.Uuid
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  resident          Resident       @relation(fields: [residentId], references: [id])
+  invoices          Invoice[]
+
+  @@map("resident_contracts")
+}
+
+model FundingSource {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId  String            @map("resident_id") @db.Uuid
+  type        FundingSourceType
+  funderName  String?           @map("funder_name") @db.VarChar(255)
+  funderRef   String?           @map("funder_ref") @db.VarChar(100)
+  weeklyRate  Decimal           @map("weekly_rate") @db.Decimal(10, 2)
+  startDate   DateTime          @map("start_date") @db.Date
+  endDate     DateTime?         @map("end_date") @db.Date
+  reviewDate  DateTime?         @map("review_date") @db.Date
+  isPrimary   Boolean           @default(true) @map("is_primary")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  resident    Resident          @relation(fields: [residentId], references: [id])
+
+  @@map("funding_sources")
+}
+
+model Invoice {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  homeId        String        @map("home_id") @db.Uuid
+  residentId    String        @map("resident_id") @db.Uuid
+  contractId    String        @map("contract_id") @db.Uuid
+  invoiceNumber String        @unique @map("invoice_number") @db.VarChar(30)
+  periodStart   DateTime      @map("period_start") @db.Date
+  periodEnd     DateTime      @map("period_end") @db.Date
+  issueDate     DateTime      @default(now()) @map("issue_date") @db.Date
+  dueDate       DateTime      @map("due_date") @db.Date
+  subtotal      Decimal       @db.Decimal(10, 2)
+  taxAmount     Decimal       @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  totalAmount   Decimal       @map("total_amount") @db.Decimal(10, 2)
+  amountPaid    Decimal       @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  status        InvoiceStatus @default(draft)
+  lineItems     Json          @default("[]") @map("line_items")
+  sentAt        DateTime?     @map("sent_at")
+  sentTo        String?       @map("sent_to") @db.VarChar(255)
+  notes         String?
+  createdBy     String        @map("created_by") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  home          Home          @relation(fields: [homeId], references: [id])
+  resident      Resident      @relation(fields: [residentId], references: [id])
+  contract      ResidentContract @relation(fields: [contractId], references: [id])
+  payments      Payment[]
+
+  @@map("invoices")
+}
+
+model Payment {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId     String        @map("invoice_id") @db.Uuid
+  residentId    String        @map("resident_id") @db.Uuid
+  amount        Decimal       @db.Decimal(10, 2)
+  method        PaymentMethod
+  reference     String?       @db.VarChar(255)
+  receivedDate  DateTime      @map("received_date") @db.Date
+  notes         String?
+  recordedBy    String        @map("recorded_by") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id])
+
+  @@map("payments")
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email             String   @unique @db.VarChar(255)
+  fullName          String   @map("full_name") @db.VarChar(255)
+  role              UserRole
+  organisationId    String?  @map("organisation_id") @db.Uuid
+  homeIds           String[] @map("home_ids") @db.Uuid
+  staffId           String?  @unique @map("staff_id") @db.Uuid
+  residentId        String?  @map("resident_id") @db.Uuid
+  isActive          Boolean  @default(true) @map("is_active")
+  mfaEnabled        Boolean  @default(false) @map("mfa_enabled")
+  mfaSecret         String?  @map("mfa_secret") @db.VarChar(255)
+  lastLoginAt       DateTime? @map("last_login_at")
+  lastLoginIp       String?  @map("last_login_ip") @db.VarChar(45)
+  failedLoginCount  Int      @default(0) @map("failed_login_count") @db.SmallInt
+  lockedUntil       DateTime? @map("locked_until")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+// ─── Remaining models (abbreviated) ──────────────────────────────────────────
+
+model DolsRecord {
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId        String     @map("resident_id") @db.Uuid
+  homeId            String     @map("home_id") @db.Uuid
+  applicationDate   DateTime   @map("application_date") @db.Date
+  supervisoryBody   String?    @map("supervisory_body") @db.VarChar(255)
+  outcome           DolsStatus @default(application_pending)
+  grantedDate       DateTime?  @map("granted_date") @db.Date
+  expiryDate        DateTime?  @map("expiry_date") @db.Date
+  renewalInitiated  Boolean    @default(false) @map("renewal_initiated")
+  createdBy         String     @map("created_by") @db.Uuid
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  resident          Resident   @relation(fields: [residentId], references: [id])
+
+  @@map("dols_records")
+}
+
+model McaAssessment {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId      String   @map("resident_id") @db.Uuid
+  decisionTopic   String   @map("decision_topic") @db.VarChar(500)
+  capacityFound   Boolean  @map("capacity_found")
+  assessedBy      String   @map("assessed_by") @db.Uuid
+  assessedAt      DateTime @map("assessed_at")
+  bestInterests   String?  @map("best_interests")
+  reviewDate      DateTime? @map("review_date") @db.Date
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  resident        Resident @relation(fields: [residentId], references: [id])
+
+  @@map("mca_assessments")
+}
+
+model Diagnosis {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId    String   @map("resident_id") @db.Uuid
+  icd10Code     String?  @map("icd10_code") @db.VarChar(10)
+  description   String   @db.VarChar(500)
+  diagnosedDate DateTime? @map("diagnosed_date") @db.Date
+  isPrimary     Boolean  @default(false) @map("is_primary")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  resident      Resident @relation(fields: [residentId], references: [id])
+
+  @@map("diagnoses")
+}
+
+model Vital {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId      String      @map("resident_id") @db.Uuid
+  homeId          String      @map("home_id") @db.Uuid
+  type            VitalType
+  value           Json
+  unit            String?     @db.VarChar(20)
+  source          VitalSource @default(manual)
+  withinRange     Boolean?    @map("within_range")
+  alertTriggered  Boolean     @default(false) @map("alert_triggered")
+  recordedBy      String?     @map("recorded_by") @db.Uuid
+  recordedAt      DateTime    @map("recorded_at")
+  notes           String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  resident        Resident    @relation(fields: [residentId], references: [id])
+
+  @@map("vitals")
+}
+
+model VitalTarget {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId  String   @unique @map("resident_id") @db.Uuid
+  targets     Json     @default("{}")
+  setBy       String   @map("set_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  resident    Resident @relation(fields: [residentId], references: [id])
+
+  @@map("vital_targets")
+}
+
+model Wound {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  residentId  String       @map("resident_id") @db.Uuid
+  site        String       @db.VarChar(100)
+  onsetDate   DateTime?    @map("onset_date") @db.Date
+  woundType   String?      @map("wound_type") @db.VarChar(100)
+  status      WoundStatus  @default(open)
+  healedDate  DateTime?    @map("healed_date") @db.Date
+  createdBy   String       @map("created_by") @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  resident    Resident     @relation(fields: [residentId], references: [id])
+  assessments WoundAssessment[]
+
+  @@map("wounds")
+}
+
+model WoundAssessment {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  woundId         String   @map("wound_id") @db.Uuid
+  assessedAt      DateTime @map("assessed_at")
+  assessedBy      String   @map("assessed_by") @db.Uuid
+  lengthMm        Int?     @map("length_mm") @db.SmallInt
+  widthMm         Int?     @map("width_mm") @db.SmallInt
+  pushScore       Int?     @map("push_score") @db.SmallInt
+  dressingUsed    String?  @map("dressing_used") @db.VarChar(255)
+  nextChangeDate  DateTime? @map("next_change_date") @db.Date
+  photoS3Key      String?  @map("photo_s3_key") @db.VarChar(500)
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  wound           Wound    @relation(fields: [woundId], references: [id])
+
+  @@map("wound_assessments")
+}
+
+model ControlledDrugRegister {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  homeId          String   @map("home_id") @db.Uuid
+  medicationId    String   @map("medication_id") @db.Uuid
+  residentId      String?  @map("resident_id") @db.Uuid
+  action          CdAction
+  quantityIn      Decimal? @map("quantity_in") @db.Decimal(10, 2)
+  quantityOut     Decimal? @map("quantity_out") @db.Decimal(10, 2)
+  runningBalance  Decimal  @map("running_balance") @db.Decimal(10, 2)
+  actionBy        String   @map("action_by") @db.Uuid
+  witnessId       String   @map("witness_id") @db.Uuid
+  notes           String?
+  marEntryId      String?  @map("mar_entry_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  medication      Medication @relation(fields: [medicationId], references: [id])
+
+  @@map("controlled_drug_register")
+}
+
+model InventoryItem {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  homeId              String            @map("home_id") @db.Uuid
+  name                String            @db.VarChar(255)
+  sku                 String?           @db.VarChar(100)
+  category            InventoryCategory
+  unit                String            @db.VarChar(50)
+  quantityOnHand      Decimal           @default(0) @map("quantity_on_hand") @db.Decimal(10, 2)
+  parLevel            Decimal           @map("par_level") @db.Decimal(10, 2)
+  reorderPoint        Decimal           @map("reorder_point") @db.Decimal(10, 2)
+  reorderQuantity     Decimal?          @map("reorder_quantity") @db.Decimal(10, 2)
+  unitCost            Decimal?          @map("unit_cost") @db.Decimal(10, 2)
+  status              InventoryStatus   @default(ok)
+  lastRestocked       DateTime?         @map("last_restocked")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  home                Home              @relation(fields: [homeId], references: [id])
+  adjustments         InventoryAdjustment[]
+
+  @@map("inventory_items")
+}
+
+model InventoryAdjustment {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId          String        @map("item_id") @db.Uuid
+  homeId          String        @map("home_id") @db.Uuid
+  type            String        @db.VarChar(50)
+  quantityChange  Decimal       @map("quantity_change") @db.Decimal(10, 2)
+  quantityAfter   Decimal       @map("quantity_after") @db.Decimal(10, 2)
+  notes           String?
+  recordedBy      String        @map("recorded_by") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  item            InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@map("inventory_adjustments")
+}
+
+model ComplianceAudit {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  homeId          String    @map("home_id") @db.Uuid
+  auditType       AuditType @map("audit_type")
+  date            DateTime  @db.Date
+  conductedBy     String    @map("conducted_by") @db.Uuid
+  scorePct        Int?      @map("score_pct") @db.SmallInt
+  findings        Json      @default("[]")
+  actions         Json      @default("[]")
+  overallOutcome  String?   @map("overall_outcome") @db.VarChar(50)
+  nextDueDate     DateTime? @map("next_due_date") @db.Date
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  home            Home      @relation(fields: [homeId], references: [id])
+
+  @@map("compliance_audits")
+}

@@ -6,6 +6,8 @@ import { BullModule } from '@nestjs/bull';
 import { TerminusModule } from '@nestjs/terminus';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { OrganisationsModule } from './modules/organisations/organisations.module';
+import { HomesModule } from './modules/homes/homes.module';
 import { ResidentsModule } from './modules/residents/residents.module';
 import { MedicationsModule } from './modules/medications/medications.module';
 import { CareNotesModule } from './modules/care-notes/care-notes.module';
@@ -69,6 +71,8 @@ import awsConfig from './config/aws.config';
 
     // Feature modules
     AuthModule,
+    OrganisationsModule,
+    HomesModule,
     ResidentsModule,
     MedicationsModule,
     CareNotesModule,

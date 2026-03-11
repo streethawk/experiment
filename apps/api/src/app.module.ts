@@ -9,6 +9,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { OrganisationsModule } from './modules/organisations/organisations.module';
 import { HomesModule } from './modules/homes/homes.module';
 import { ResidentsModule } from './modules/residents/residents.module';
+import { CarePlansModule } from './modules/care-plans/care-plans.module';
+import { RiskAssessmentsModule } from './modules/risk-assessments/risk-assessments.module';
 import { MedicationsModule } from './modules/medications/medications.module';
 import { CareNotesModule } from './modules/care-notes/care-notes.module';
 import { IncidentsModule } from './modules/incidents/incidents.module';
@@ -74,6 +76,8 @@ import awsConfig from './config/aws.config';
     OrganisationsModule,
     HomesModule,
     ResidentsModule,
+    CarePlansModule,
+    RiskAssessmentsModule,
     MedicationsModule,
     CareNotesModule,
     IncidentsModule,

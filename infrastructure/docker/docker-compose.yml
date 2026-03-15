@@ -115,8 +115,9 @@ services:
       OPENSEARCH_URL: http://opensearch:9200
       ALLOWED_ORIGINS: '["http://localhost:3001","http://localhost:3002"]'
     volumes:
-      - ../../apps/api/src:/app/src          # hot reload
-      - api_node_modules:/app/node_modules  # keep container's node_modules
+      - ../../apps/api/src:/app/src                  # hot reload
+      - ../../apps/api/prisma:/app/prisma            # schema + migrations + seed
+      - api_node_modules:/app/node_modules           # keep container's node_modules
       - api_prisma_client:/app/node_modules/.prisma  # keep generated Prisma client
     depends_on:
       postgres:

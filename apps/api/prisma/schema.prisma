@@ -14,62 +14,449 @@ datasource db {
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-enum SubscriptionTier { starter professional enterprise }
-enum OrgType           { single_home care_group nhs_trust }
-enum CqcRating         { outstanding good requires_improvement inadequate not_yet_rated }
-enum CareTypeEnum      { residential nursing dementia emi learning_disability physical_disability respite }
-enum RoomType          { single double ensuite shared }
+enum SubscriptionTier {
+  starter
+  professional
+  enterprise
+}
 
-enum ResidentStatus    { active hospital respite leave discharged deceased }
-enum Gender            { male female non_binary prefer_not_to_say }
-enum FundingSourceType { self_funded local_authority chc chc_fast_track nhs_fnc mixed deferred_payment }
-enum ResidentCareType  { residential nursing dementia emi respite end_of_life }
-enum AdmissionSource   { hospital_discharge home other_care_home self_referral la_referral nhs_referral }
-enum AllergySeverity   { mild moderate severe life_threatening }
-enum DolsStatus        { not_required application_pending granted refused expired withdrawn }
-enum CarePlanStatus    { draft current superseded archived }
-enum RiskType          { falls waterlow must cognitive_mmse moving_handling skin_integrity choking behaviour self_neglect financial }
-enum RiskLevel         { low medium high very_high }
+enum OrgType {
+  single_home
+  care_group
+  nhs_trust
+}
 
-enum MedicationRoute      { oral sublingual topical transdermal subcutaneous intramuscular intravenous inhaled rectal ophthalmic otic nasal nebulised }
-enum MedicationFrequency  { once_daily twice_daily three_times_daily four_times_daily every_4_hours every_6_hours every_8_hours every_12_hours weekly fortnightly monthly when_required stat other }
-enum MedicationStatus     { active on_hold discontinued completed }
-enum MarOutcome           { given refused not_available away unable not_required self_administered }
-enum CdAction             { stock_received administered wasted returned destroyed transferred }
+enum CqcRating {
+  outstanding
+  good
+  requires_improvement
+  inadequate
+  not_yet_rated
+}
 
-enum CareNoteShift        { early late night }
-enum CareNoteCategory     { personal_care nutrition hydration medication mobility continence sleep mood_behaviour medical social_activity wound_care repositioning handover general }
-enum WoundStatus          { open healing healed deteriorating }
+enum CareTypeEnum {
+  residential
+  nursing
+  dementia
+  emi
+  learning_disability
+  physical_disability
+  respite
+}
 
-enum IncidentType          { fall medication_error safeguarding injury near_miss complaint infection pressure_ulcer elopement aggression unexpected_death other }
-enum IncidentSeverity      { low medium high critical }
-enum IncidentStatus        { open under_review pending_cqc closed }
-enum SafeguardingStatus    { concern_raised referral_submitted strategy_meeting investigation closed_substantiated closed_unsubstantiated }
+enum RoomType {
+  single
+  double
+  ensuite
+  shared
+}
 
-enum VitalType             { blood_pressure pulse oxygen_saturation temperature weight blood_glucose respiration_rate pain_score }
-enum VitalSource           { manual iot_device imported }
+enum ResidentStatus {
+  active
+  hospital
+  respite
+  leave
+  discharged
+  deceased
+}
 
-enum StaffRole             { carer senior_carer nurse activities_coordinator home_manager registered_manager chef maintenance finance_admin administrator group_admin }
-enum EmploymentType        { full_time part_time bank agency volunteer }
-enum StaffStatus           { active on_leave sick suspended terminated }
-enum TrainingType          { mandatory recommended specialist induction }
-enum ShiftType             { early late night split custom }
-enum ShiftStatus           { scheduled confirmed in_progress completed absent cancelled }
-enum ClockMethod           { pin qr_code nfc manual biometric }
+enum Gender {
+  male
+  female
+  non_binary
+  prefer_not_to_say
+}
 
-enum ContractStatus        { active terminated suspended }
-enum InvoiceStatus         { draft sent paid partial overdue void written_off }
-enum PaymentMethod         { bank_transfer cheque card direct_debit standing_order la_bacs }
+enum FundingSourceType {
+  self_funded
+  local_authority
+  chc
+  chc_fast_track
+  nhs_fnc
+  mixed
+  deferred_payment
+}
 
-enum InventoryCategory     { ppe clinical_consumables medication_stock food_drink cleaning laundry equipment office activities }
-enum InventoryStatus       { ok low critical out_of_stock discontinued }
-enum PoStatus              { draft sent partially_received received cancelled }
+enum ResidentCareType {
+  residential
+  nursing
+  dementia
+  emi
+  respite
+  end_of_life
+}
 
-enum AuditType             { medication care_plan environment health_safety infection_control mca_dols safeguarding staff_files call_bell_response moving_handling }
-enum DocumentType          { care_plan risk_assessment incident_report consent_form dnar lpa dols mca_assessment advance_care_plan contract invoice id_document medical_letter discharge_summary training_certificate policy other }
-enum UserRole              { platform_admin group_admin home_manager registered_manager senior_carer carer nurse finance_admin family_member gp_external }
-enum NotificationType      { alert task message system reminder }
-enum NotificationPriority  { low medium high critical }
+enum AdmissionSource {
+  hospital_discharge
+  home
+  other_care_home
+  self_referral
+  la_referral
+  nhs_referral
+}
+
+enum AllergySeverity {
+  mild
+  moderate
+  severe
+  life_threatening
+}
+
+enum DolsStatus {
+  not_required
+  application_pending
+  granted
+  refused
+  expired
+  withdrawn
+}
+
+enum CarePlanStatus {
+  draft
+  current
+  superseded
+  archived
+}
+
+enum RiskType {
+  falls
+  waterlow
+  must
+  cognitive_mmse
+  moving_handling
+  skin_integrity
+  choking
+  behaviour
+  self_neglect
+  financial
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+  very_high
+}
+
+enum MedicationRoute {
+  oral
+  sublingual
+  topical
+  transdermal
+  subcutaneous
+  intramuscular
+  intravenous
+  inhaled
+  rectal
+  ophthalmic
+  otic
+  nasal
+  nebulised
+}
+
+enum MedicationFrequency {
+  once_daily
+  twice_daily
+  three_times_daily
+  four_times_daily
+  every_4_hours
+  every_6_hours
+  every_8_hours
+  every_12_hours
+  weekly
+  fortnightly
+  monthly
+  when_required
+  stat
+  other
+}
+
+enum MedicationStatus {
+  active
+  on_hold
+  discontinued
+  completed
+}
+
+enum MarOutcome {
+  given
+  refused
+  not_available
+  away
+  unable
+  not_required
+  self_administered
+}
+
+enum CdAction {
+  stock_received
+  administered
+  wasted
+  returned
+  destroyed
+  transferred
+}
+
+enum CareNoteShift {
+  early
+  late
+  night
+}
+
+enum CareNoteCategory {
+  personal_care
+  nutrition
+  hydration
+  medication
+  mobility
+  continence
+  sleep
+  mood_behaviour
+  medical
+  social_activity
+  wound_care
+  repositioning
+  handover
+  general
+}
+
+enum WoundStatus {
+  open
+  healing
+  healed
+  deteriorating
+}
+
+enum IncidentType {
+  fall
+  medication_error
+  safeguarding
+  injury
+  near_miss
+  complaint
+  infection
+  pressure_ulcer
+  elopement
+  aggression
+  unexpected_death
+  other
+}
+
+enum IncidentSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum IncidentStatus {
+  open
+  under_review
+  pending_cqc
+  closed
+}
+
+enum SafeguardingStatus {
+  concern_raised
+  referral_submitted
+  strategy_meeting
+  investigation
+  closed_substantiated
+  closed_unsubstantiated
+}
+
+enum VitalType {
+  blood_pressure
+  pulse
+  oxygen_saturation
+  temperature
+  weight
+  blood_glucose
+  respiration_rate
+  pain_score
+}
+
+enum VitalSource {
+  manual
+  iot_device
+  imported
+}
+
+enum StaffRole {
+  carer
+  senior_carer
+  nurse
+  activities_coordinator
+  home_manager
+  registered_manager
+  chef
+  maintenance
+  finance_admin
+  administrator
+  group_admin
+}
+
+enum EmploymentType {
+  full_time
+  part_time
+  bank
+  agency
+  volunteer
+}
+
+enum StaffStatus {
+  active
+  on_leave
+  sick
+  suspended
+  terminated
+}
+
+enum TrainingType {
+  mandatory
+  recommended
+  specialist
+  induction
+}
+
+enum ShiftType {
+  early
+  late
+  night
+  split
+  custom
+}
+
+enum ShiftStatus {
+  scheduled
+  confirmed
+  in_progress
+  completed
+  absent
+  cancelled
+}
+
+enum ClockMethod {
+  pin
+  qr_code
+  nfc
+  manual
+  biometric
+}
+
+enum ContractStatus {
+  active
+  terminated
+  suspended
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  partial
+  overdue
+  void
+  written_off
+}
+
+enum PaymentMethod {
+  bank_transfer
+  cheque
+  card
+  direct_debit
+  standing_order
+  la_bacs
+}
+
+enum InventoryCategory {
+  ppe
+  clinical_consumables
+  medication_stock
+  food_drink
+  cleaning
+  laundry
+  equipment
+  office
+  activities
+}
+
+enum InventoryStatus {
+  ok
+  low
+  critical
+  out_of_stock
+  discontinued
+}
+
+enum PoStatus {
+  draft
+  sent
+  partially_received
+  received
+  cancelled
+}
+
+enum AuditType {
+  medication
+  care_plan
+  environment
+  health_safety
+  infection_control
+  mca_dols
+  safeguarding
+  staff_files
+  call_bell_response
+  moving_handling
+}
+
+enum DocumentType {
+  care_plan
+  risk_assessment
+  incident_report
+  consent_form
+  dnar
+  lpa
+  dols
+  mca_assessment
+  advance_care_plan
+  contract
+  invoice
+  id_document
+  medical_letter
+  discharge_summary
+  training_certificate
+  policy
+  other
+}
+
+enum UserRole {
+  platform_admin
+  group_admin
+  home_manager
+  registered_manager
+  senior_carer
+  carer
+  nurse
+  finance_admin
+  family_member
+  gp_external
+}
+
+enum NotificationType {
+  alert
+  task
+  message
+  system
+  reminder
+}
+
+enum NotificationPriority {
+  low
+  medium
+  high
+  critical
+}
 
 // ─── Tenant Foundation ────────────────────────────────────────────────────────
 

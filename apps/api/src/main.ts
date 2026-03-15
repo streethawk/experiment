@@ -35,8 +35,11 @@ async function bootstrap() {
   app.use(compression());
 
   // CORS — restricted to known origins
+  // configService.get('app.allowedOrigins') returns the parsed array from app.config.ts
+  const allowedOrigins: string[] = configService.get<string[]>('app.allowedOrigins') ??
+    JSON.parse(process.env.ALLOWED_ORIGINS ?? '[]');
   app.enableCors({
-    origin: configService.get<string[]>('ALLOWED_ORIGINS', []),
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Home-ID', 'X-Organisation-ID'],

@@ -11,7 +11,7 @@ services:
     container_name: carecore-postgres
     restart: unless-stopped
     ports:
-      - '5432:5432'
+      - '5433:5432'
     environment:
       POSTGRES_USER: carecore
       POSTGRES_PASSWORD: carecore_dev_password

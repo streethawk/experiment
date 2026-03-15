@@ -167,7 +167,7 @@ function TodayPanel({ homeId, token }: { homeId: string; token: string }) {
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-0.5 ml-4">
-                {formatTime(s.start_time)} – {formatTime(s.end_time)} · {s.role_on_shift.replace(/_/g, ' ')}
+                {formatTime(s.start_time)} – {formatTime(s.end_time)}{s.role_on_shift ? ` · ${s.role_on_shift.replace(/_/g, ' ')}` : ''}
                 {s.clock_status === 'clocked_in' && s.attendance?.clocked_in_at && (
                   <span className="text-green-600 font-medium"> · In since {formatTime(s.attendance.clocked_in_at)}</span>
                 )}

@@ -51,7 +51,7 @@ export class RotaService {
     }
     for (const shift of shifts) {
       const key = this.toDateStr(shift.date);
-      if (byDay[key]) byDay[key].push(shift);
+      if (byDay[key]) byDay[key].push(this.serializeShift(shift) as any);
     }
 
     // Summary per day
@@ -284,7 +284,7 @@ export class RotaService {
     });
 
     return shifts.map((s) => ({
-      ...s,
+      ...this.serializeShift(s),
       clock_status: !s.attendance
         ? 'not_clocked_in'
         : !s.attendance.clockedOutAt
@@ -421,5 +421,46 @@ export class RotaService {
     const d = new Date(date);
     d.setUTCHours(23, 59, 59, 999);
     return d;
+  }
+
+  // Convert Prisma camelCase shift record to snake_case for the API response
+  private serializeShift(s: any): any {
+    const attendance = s.attendance ? {
+      id:                 s.attendance.id,
+      shift_id:           s.attendance.shiftId,
+      staff_id:           s.attendance.staffId,
+      clocked_in_at:      s.attendance.clockedInAt?.toISOString() ?? null,
+      clock_in_method:    s.attendance.clockInMethod ?? null,
+      clocked_out_at:     s.attendance.clockedOutAt?.toISOString() ?? null,
+      clock_out_method:   s.attendance.clockOutMethod ?? null,
+      is_manual_override: s.attendance.isManualOverride,
+      override_reason:    s.attendance.overrideReason ?? null,
+    } : null;
+
+    const staff = s.staff ? {
+      id:              s.staff.id,
+      full_name:       s.staff.fullName,
+      role:            s.staff.role,
+      employment_type: s.staff.employmentType ?? null,
+      phone:           s.staff.phone ?? null,
+    } : undefined;
+
+    return {
+      id:            s.id,
+      home_id:       s.homeId,
+      staff_id:      s.staffId,
+      date:          this.toDateStr(s.date),
+      shift_type:    s.shiftType,
+      start_time:    (s.startTime as Date).toISOString(),
+      end_time:      (s.endTime as Date).toISOString(),
+      break_minutes: s.breakMinutes,
+      role_on_shift: s.roleOnShift,
+      is_agency:     s.isAgency,
+      agency_name:   s.agencyName ?? null,
+      status:        s.status,
+      notes:         s.notes ?? null,
+      ...(staff && { staff }),
+      attendance,
+    };
   }
 }

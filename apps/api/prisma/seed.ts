@@ -15,7 +15,7 @@ async function main() {
       name: 'CareCore Demo Group',
       type: 'care_group',
       subscriptionTier: 'professional',
-      contactEmail: 'admin@carecore.demo',
+      billingEmail: 'admin@carecore.demo',
     },
   });
   console.log(`✓ Organisation: ${org.name}`);
@@ -28,8 +28,8 @@ async function main() {
       id: '00000000-0000-0000-0000-000000000002',
       organisationId: org.id,
       name: 'Sunrise Care Home',
-      registrationNumber: 'CQC-DEMO-001',
-      address: '1 Demo Lane',
+      cqcRegistrationNumber: 'CQC-DEMO-001',
+      addressLine1: '1 Demo Lane',
       city: 'London',
       postcode: 'SW1A 1AA',
       phone: '02012345678',
@@ -40,24 +40,37 @@ async function main() {
   });
   console.log(`✓ Home: ${home.name}`);
 
+  // ─── Wing (required by Room) ────────────────────────────────────────────────
+  const wing = await prisma.wing.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000003' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000003',
+      homeId: home.id,
+      name: 'Main Wing',
+      floor: 1,
+    },
+  });
+  console.log(`✓ Wing: ${wing.name}`);
+
   // ─── Users ─────────────────────────────────────────────────────────────────
   const passwordHash = await bcrypt.hash('Password1!', 12);
 
   const users = [
     {
-      id:    '00000000-0000-0000-0000-000000000010',
+      id: '00000000-0000-0000-0000-000000000010',
       email: 'manager@carecore.demo',
       fullName: 'Sarah Manager',
       role: 'home_manager' as const,
     },
     {
-      id:    '00000000-0000-0000-0000-000000000011',
+      id: '00000000-0000-0000-0000-000000000011',
       email: 'carer@carecore.demo',
       fullName: 'James Carer',
       role: 'carer' as const,
     },
     {
-      id:    '00000000-0000-0000-0000-000000000012',
+      id: '00000000-0000-0000-0000-000000000012',
       email: 'nurse@carecore.demo',
       fullName: 'Dr. Priya Nurse',
       role: 'nurse' as const,
@@ -83,6 +96,7 @@ async function main() {
   const rooms = Array.from({ length: 5 }, (_, i) => ({
     id: `00000000-0000-0000-0000-0000000001${String(i + 1).padStart(2, '0')}`,
     homeId: home.id,
+    wingId: wing.id,
     roomNumber: `10${i + 1}`,
     roomType: 'single' as const,
     floor: 1,
@@ -102,6 +116,7 @@ async function main() {
     {
       id: '00000000-0000-0000-0000-000000000020',
       homeId: home.id,
+      organisationId: org.id,
       roomId: rooms[0].id,
       fullName: 'Edith Thompson',
       dateOfBirth: new Date('1938-03-12'),
@@ -114,6 +129,7 @@ async function main() {
     {
       id: '00000000-0000-0000-0000-000000000021',
       homeId: home.id,
+      organisationId: org.id,
       roomId: rooms[1].id,
       fullName: 'Arthur Pemberton',
       dateOfBirth: new Date('1932-07-04'),
@@ -126,6 +142,7 @@ async function main() {
     {
       id: '00000000-0000-0000-0000-000000000022',
       homeId: home.id,
+      organisationId: org.id,
       roomId: rooms[2].id,
       fullName: 'Margaret Collins',
       dateOfBirth: new Date('1940-11-28'),
@@ -147,11 +164,11 @@ async function main() {
   }
 
   console.log('\n✅ Seed complete.\n');
-  console.log('Login credentials (all use password: Password1!)');
+  console.log('Login credentials (password: Password1!)');
   console.log('  manager@carecore.demo  — Home Manager');
   console.log('  carer@carecore.demo    — Care Assistant');
   console.log('  nurse@carecore.demo    — Nurse');
-  console.log(`\nHome ID for URLs: ${home.id}`);
+  console.log(`\nHome ID: ${home.id}`);
 }
 
 main()

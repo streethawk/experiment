@@ -311,10 +311,10 @@ function RiskTab({ assessments }: { assessments: ResidentProfile['latest_risk_as
           >
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-semibold text-slate-800 capitalize">
-                {a.type.replace(/_/g, ' ')}
+                {a.type?.replace(/_/g, ' ') ?? '—'}
               </h4>
               <span className={`text-xs px-2 py-0.5 rounded font-medium ${RISK_LEVEL_COLOURS[a.risk_level] ?? 'bg-slate-100'}`}>
-                {a.risk_level.replace(/_/g, ' ')}
+                {a.risk_level?.replace(/_/g, ' ') ?? '—'}
               </span>
             </div>
             {a.score !== null && (

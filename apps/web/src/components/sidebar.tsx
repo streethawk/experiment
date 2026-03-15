@@ -18,12 +18,12 @@ interface NavItem {
 
 function navItems(homeId: string): NavItem[] {
   return [
-    { label: 'Residents',   href: `/homes/${homeId}/residents`, icon: Users },
-    { label: 'Rota',        href: `/homes/${homeId}/rota`,      icon: Calendar,     managerOnly: true },
-    { label: 'Care Notes',  href: `/homes/${homeId}/residents`, icon: ClipboardList },
-    { label: 'Medications', href: `/homes/${homeId}/residents`, icon: Activity },
-    { label: 'Incidents',   href: `/homes/${homeId}/residents`, icon: Shield,        managerOnly: true },
-    { label: 'Reports',     href: `/homes/${homeId}/residents`, icon: BarChart2,     managerOnly: true },
+    { label: 'Residents',   href: `/homes/${homeId}/residents`,   icon: Users },
+    { label: 'Rota',        href: `/homes/${homeId}/rota`,        icon: Calendar,     managerOnly: true },
+    { label: 'Care Notes',  href: `/homes/${homeId}/care-notes`,  icon: ClipboardList },
+    { label: 'Medications', href: `/homes/${homeId}/medications`, icon: Activity },
+    { label: 'Incidents',   href: `/homes/${homeId}/incidents`,   icon: Shield,       managerOnly: true },
+    { label: 'Reports',     href: `/homes/${homeId}/reports`,     icon: BarChart2,    managerOnly: true },
   ];
 }
 
@@ -59,9 +59,7 @@ export function Sidebar({ homeId }: { homeId: string }) {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {items.map(({ label, href, icon: Icon }) => {
-          const active = pathname.startsWith(href) && href !== `/homes/${homeId}/residents`
-            ? true
-            : pathname === href || (label === 'Residents' && pathname.startsWith(`/homes/${homeId}/residents`));
+          const active = pathname.startsWith(href);
 
           return (
             <Link

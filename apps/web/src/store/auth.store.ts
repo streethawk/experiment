@@ -193,12 +193,15 @@ export const useAuthStore = create<AuthState>()(
       // ─── Hydrate on page load (for SSR/navigation) ─────────────────────────
       hydrateFromStorage: async () => {
         const at = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-        if (!at || get().isAuthenticated) return;
+        if (!at) return;
+
+        // Token already in store — nothing to do
+        if (get().accessToken) return;
 
         try {
           const user = await authApi.me(at);
           const homeId = localStorage.getItem(STORAGE_KEYS.HOME_ID);
-          set({ user, accessToken: at, isAuthenticated: true, activeHomeId: homeId });
+          set({ user, accessToken: at, refreshToken: localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN), isAuthenticated: true, activeHomeId: homeId });
         } catch {
           // Access token expired — try refresh
           const success = await get().refreshAccessToken();

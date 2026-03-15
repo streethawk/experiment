@@ -118,7 +118,10 @@ export default function AdmitResidentPage() {
     }));
 
   const submit = async () => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setError('Session expired — please log in again.');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
 

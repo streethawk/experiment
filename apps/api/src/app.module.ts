@@ -13,6 +13,7 @@ import { CarePlansModule } from './modules/care-plans/care-plans.module';
 import { RiskAssessmentsModule } from './modules/risk-assessments/risk-assessments.module';
 import { MedicationsModule } from './modules/medications/medications.module';
 import { CareNotesModule } from './modules/care-notes/care-notes.module';
+import { WoundsModule } from './modules/wounds/wounds.module';
 import { IncidentsModule } from './modules/incidents/incidents.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { RotaModule } from './modules/rota/rota.module';
@@ -80,6 +81,7 @@ import awsConfig from './config/aws.config';
     RiskAssessmentsModule,
     MedicationsModule,
     CareNotesModule,
+    WoundsModule,
     IncidentsModule,
     StaffModule,
     RotaModule,

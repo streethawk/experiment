@@ -103,6 +103,16 @@ export interface CarePlanSummary {
   approved_at: string | null;
 }
 
+export interface CarePlanFull extends CarePlanSummary {
+  resident_id: string;
+  home_id: string;
+  sections: Record<string, { goals?: string; interventions?: string; notes?: string; [key: string]: unknown }>;
+  created_by: string;
+  approved_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface RiskAssessmentSummary {
   id: string;
   type: string;
@@ -146,6 +156,13 @@ export const residentsApi = {
     apiFetch(`/homes/${homeId}/residents/${residentId}/discharge`, {
       method: 'POST', body: JSON.stringify(data), token,
     }),
+
+  // Care plans
+  getCarePlan: (homeId: string, residentId: string, planId: string, token: string): Promise<CarePlanFull> =>
+    apiFetch(`/homes/${homeId}/residents/${residentId}/care-plans/${planId}`, { method: 'GET', token }),
+
+  listCarePlans: (homeId: string, residentId: string, token: string): Promise<CarePlanSummary[]> =>
+    apiFetch(`/homes/${homeId}/residents/${residentId}/care-plans`, { method: 'GET', token }),
 
   // Allergies
   createAllergy: (homeId: string, residentId: string, data: object, token: string) =>

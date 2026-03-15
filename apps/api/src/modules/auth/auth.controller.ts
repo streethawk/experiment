@@ -17,7 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
-import { AuthService } from './auth.service';
+import { AuthService, LoginResult, MfaPendingResult, TokenPair } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
@@ -39,7 +39,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 attempts per minute
   @ApiOperation({ summary: 'Authenticate with email and password' })
-  async login(@Req() req: Request, @Body() _dto: LoginDto) {
+  async login(@Req() req: Request, @Body() _dto: LoginDto): Promise<LoginResult | MfaPendingResult> {
     // req.user is populated by LocalStrategy after credential validation
     const user = req.user as any;
     const clientIp = this.extractIp(req);
@@ -56,7 +56,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // tighter limit for MFA
   @ApiOperation({ summary: 'Verify TOTP code after login (if MFA enabled)' })
-  async verifyMfa(@Req() req: Request, @Body() dto: MfaVerifyDto) {
+  async verifyMfa(@Req() req: Request, @Body() dto: MfaVerifyDto): Promise<LoginResult> {
     return this.authService.verifyMfa(
       dto.mfa_token,
       dto.code,
@@ -72,7 +72,7 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate refresh token and get new access token' })
-  async refresh(@Req() req: Request, @Body() dto: RefreshTokenDto) {
+  async refresh(@Req() req: Request, @Body() dto: RefreshTokenDto): Promise<TokenPair | { status: number; message: string }> {
     // Decode the refresh JWT to get userId + jti without full validation
     // (full validation happens in auth.service)
     let payload: { sub: string; jti: string };

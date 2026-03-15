@@ -19,22 +19,22 @@ import { RefreshJwtPayload } from './strategies/jwt-refresh.strategy';
 
 // ─── Response shapes ──────────────────────────────────────────────────────────
 
-interface TokenPair {
+export type TokenPair = {
   access_token: string;
   refresh_token: string;
   expires_in: number;
-}
+};
 
-interface LoginResult {
+export type LoginResult = {
   requires_mfa: false;
   user: object;
 } & TokenPair;
 
-interface MfaPendingResult {
+export type MfaPendingResult = {
   requires_mfa: true;
   mfa_token: string;    // short-lived JWT, 5 min, type: 'mfa_pending'
   expires_in: number;
-}
+};
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 

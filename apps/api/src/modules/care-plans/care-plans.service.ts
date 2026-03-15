@@ -2,7 +2,7 @@ import {
   Injectable, NotFoundException, ForbiddenException,
   BadRequestException, Inject,
 } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { PRISMA_SERVICE } from '../../database/database.module';
 import { CreateCarePlanDto } from './dto/create-care-plan.dto';
 import { UpdateCarePlanDto } from './dto/update-care-plan.dto';
@@ -92,7 +92,7 @@ export class CarePlansService {
     return this.prisma.carePlan.update({
       where: { id: planId },
       data: {
-        sections: mergedSections,
+        sections: mergedSections as Prisma.InputJsonValue,
         ...(dto.next_review_date && {
           nextReviewDate: new Date(dto.next_review_date),
         }),

@@ -11,6 +11,15 @@ import { PRISMA_SERVICE } from '../../database/database.module';
 
 export type SafeUser = Omit<User, 'passwordHash' | 'mfaSecret' | 'passwordResetToken'>;
 
+const SAFE_USER_SELECT = {
+  id: true, email: true, fullName: true, role: true,
+  organisationId: true, homeIds: true, staffId: true, residentId: true,
+  emailVerifiedAt: true, passwordResetExpiry: true,
+  isActive: true, failedLoginCount: true, lockedUntil: true,
+  lastLoginAt: true, lastLoginIp: true, mfaEnabled: true,
+  createdAt: true, updatedAt: true,
+} as const;
+
 @Injectable()
 export class UsersService {
   private readonly bcryptRounds: number;
@@ -37,8 +46,8 @@ export class UsersService {
   async findSafeById(id: string): Promise<SafeUser | null> {
     return this.prisma.user.findUnique({
       where: { id },
-      omit: { passwordHash: true, mfaSecret: true, passwordResetToken: true },
-    });
+      select: SAFE_USER_SELECT,
+    }) as Promise<SafeUser | null>;
   }
 
   // ─── Creation ─────────────────────────────────────────────────────────────
@@ -69,8 +78,8 @@ export class UsersService {
         homeIds: data.homeIds ?? [],
         staffId: data.staffId,
       },
-      omit: { passwordHash: true, mfaSecret: true, passwordResetToken: true },
-    });
+      select: SAFE_USER_SELECT,
+    }) as unknown as SafeUser;
 
     return user;
   }

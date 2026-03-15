@@ -134,8 +134,7 @@ export class HomesService {
           where: {
             homeId,
             status: 'in_progress',
-            scheduledStart: { lte: new Date() },
-            scheduledEnd: { gte: new Date() },
+            date: { lte: new Date() },
           },
         }),
 

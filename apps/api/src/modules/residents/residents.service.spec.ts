@@ -4,6 +4,8 @@ import {
 } from '@nestjs/common';
 import { ResidentsService } from './residents.service';
 import { PRISMA_SERVICE } from '../../database/database.module';
+import { CareType, AdmissionSource, FundingSource } from './dto/create-resident.dto';
+import { DischargeTo } from './dto/discharge-resident.dto';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -140,8 +142,8 @@ describe('ResidentsService', () => {
       await expect(
         service.create('home-1', {
           full_name: 'Test', date_of_birth: '1940-01-01',
-          care_type: 'residential', admission_date: '2024-01-01',
-          admission_source: 'self_referral', primary_funding_source: 'self_funded',
+          care_type: CareType.RESIDENTIAL, admission_date: '2024-01-01',
+          admission_source: AdmissionSource.SELF_REFERRAL, primary_funding_source: FundingSource.SELF_FUNDED,
         }, makeUser()),
       ).rejects.toThrow(NotFoundException);
     });
@@ -154,9 +156,9 @@ describe('ResidentsService', () => {
       await expect(
         service.create('home-1', {
           full_name: 'Test', date_of_birth: '1940-01-01',
-          room_id: 'room-1', care_type: 'residential',
-          admission_date: '2024-01-01', admission_source: 'self_referral',
-          primary_funding_source: 'self_funded',
+          room_id: 'room-1', care_type: CareType.RESIDENTIAL,
+          admission_date: '2024-01-01', admission_source: AdmissionSource.SELF_REFERRAL,
+          primary_funding_source: FundingSource.SELF_FUNDED,
         }, makeUser()),
       ).rejects.toThrow(BadRequestException);
     });
@@ -175,8 +177,8 @@ describe('ResidentsService', () => {
 
       await service.create('home-1', {
         full_name: 'Edith Thompson', date_of_birth: '1938-03-12',
-        care_type: 'residential', admission_date: '2024-01-01',
-        admission_source: 'hospital_discharge', primary_funding_source: 'self_funded',
+        care_type: CareType.RESIDENTIAL, admission_date: '2024-01-01',
+        admission_source: AdmissionSource.HOSPITAL_DISCHARGE, primary_funding_source: FundingSource.SELF_FUNDED,
         nok: [{
           name: 'John Thompson', relationship: 'Son',
           is_primary_nok: true, has_lpa_welfare: false, has_lpa_finance: false,
@@ -202,7 +204,7 @@ describe('ResidentsService', () => {
 
       await expect(
         service.discharge('home-1', 'resident-1', {
-          discharge_date: '2024-06-01', discharge_to: 'home',
+          discharge_date: '2024-06-01', discharge_to: DischargeTo.HOME,
         }, makeUser({ role: 'home_manager' })),
       ).rejects.toThrow(BadRequestException);
     });
@@ -212,7 +214,7 @@ describe('ResidentsService', () => {
       prisma.resident.update.mockResolvedValue({});
 
       const result = await service.discharge('home-1', 'resident-1', {
-        discharge_date: '2024-06-01', discharge_to: 'deceased',
+        discharge_date: '2024-06-01', discharge_to: DischargeTo.DECEASED,
       }, makeUser({ role: 'home_manager' }));
 
       expect(prisma.resident.update).toHaveBeenCalledWith(
@@ -228,7 +230,7 @@ describe('ResidentsService', () => {
       prisma.resident.update.mockResolvedValue({});
 
       await service.discharge('home-1', 'resident-1', {
-        discharge_date: '2024-06-01', discharge_to: 'home',
+        discharge_date: '2024-06-01', discharge_to: DischargeTo.HOME,
       }, makeUser({ role: 'home_manager' }));
 
       expect(prisma.resident.update).toHaveBeenCalledWith(

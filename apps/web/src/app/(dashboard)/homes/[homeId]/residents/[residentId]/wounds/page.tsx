@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { woundsApi, type Wound, type WoundStatus, type WoundAssessment } from '../../../../../../../../../lib/wounds-api';
+import { woundsApi, type Wound, type WoundStatus, type WoundAssessment } from '@/lib/wounds-api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

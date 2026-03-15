@@ -2,13 +2,13 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuthStore } from '../../../../../../../../../store/auth.store';
+import { useAuthStore } from '@/store/auth.store';
 import {
   careNotesApi,
   type CareNote,
   type CareNoteShift,
   type CareNoteCategory,
-} from '../../../../../../../../../lib/care-notes-api';
+} from '@/lib/care-notes-api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

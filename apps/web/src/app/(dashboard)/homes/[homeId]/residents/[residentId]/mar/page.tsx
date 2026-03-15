@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuthStore } from '../../../../../../../../../store/auth.store';
-import { medicationsApi, type MarChart, type MarOutcome } from '../../../../../../../../../lib/medications-api';
+import { useAuthStore } from '@/store/auth.store';
+import { medicationsApi, type MarChart, type MarOutcome } from '@/lib/medications-api';
 
 // ─── Outcome helpers ──────────────────────────────────────────────────────────
 

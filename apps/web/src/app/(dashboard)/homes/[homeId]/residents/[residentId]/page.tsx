@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useAuthStore } from '../../../../../../store/auth.store';
-import { residentsApi, type ResidentProfile } from '../../../../../../lib/residents-api';
+import { useAuthStore } from '@/store/auth.store';
+import { residentsApi, type ResidentProfile } from '@/lib/residents-api';
 
 type Tab = 'overview' | 'care-plan' | 'medications' | 'notes' | 'risk' | 'contacts';
 

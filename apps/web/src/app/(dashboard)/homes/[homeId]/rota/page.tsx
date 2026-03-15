@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { rotaApi, type WeekRota, type Shift, type TodayShift, type ClockMethod } from '../../../../../../../lib/rota-api';
+import { rotaApi, type WeekRota, type Shift, type TodayShift, type ClockMethod } from '@/lib/rota-api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

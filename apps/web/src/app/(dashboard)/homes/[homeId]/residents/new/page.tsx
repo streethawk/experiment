@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuthStore } from '../../../../../../store/auth.store';
-import { residentsApi } from '../../../../../../lib/residents-api';
+import { useAuthStore } from '@/store/auth.store';
+import { residentsApi } from '@/lib/residents-api';
 
 type Step = 'personal' | 'admission' | 'medical' | 'funding' | 'nok' | 'review';
 

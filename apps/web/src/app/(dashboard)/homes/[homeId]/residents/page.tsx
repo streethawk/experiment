@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useAuthStore } from '../../../../../store/auth.store';
-import { residentsApi, type ResidentSummary } from '../../../../../lib/residents-api';
+import { useAuthStore } from '@/store/auth.store';
+import { residentsApi, type ResidentSummary } from '@/lib/residents-api';
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },

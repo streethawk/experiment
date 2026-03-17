@@ -205,13 +205,13 @@ function TodayPanel({ homeId, token }: { homeId: string; token: string }) {
 
 function ShiftChip({ shift }: { shift: Shift }) {
   return (
-    <div className={`px-2 py-1.5 rounded-lg border text-xs mb-1.5 ${SHIFT_COLOURS[shift.shiftType ?? shift.shift_type ?? 'custom']} ${shift.status === 'cancelled' ? 'opacity-40 line-through' : ''}`}>
+    <div className={`px-2 py-1.5 rounded-lg border text-xs mb-1.5 ${SHIFT_COLOURS[shift.shift_type ?? 'custom']} ${shift.status === 'cancelled' ? 'opacity-40 line-through' : ''}`}>
       <div className="flex items-center gap-1">
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[shift.status]}`} />
-        <span className="font-medium truncate">{shift.staff?.fullName ?? shift.staff?.full_name ?? '—'}</span>
+        <span className="font-medium truncate">{shift.staff?.full_name ?? '—'}</span>
       </div>
       <div className="text-gray-500 mt-0.5 ml-2.5">
-        {formatTime(shift.startTime ?? shift.start_time)} – {formatTime(shift.endTime ?? shift.end_time)}
+        {formatTime(shift.start_time)} – {formatTime(shift.end_time)}
       </div>
     </div>
   );

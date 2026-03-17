@@ -100,7 +100,7 @@ export class RotaService {
       );
     }
 
-    return this.prisma.shift.create({
+    const created = await this.prisma.shift.create({
       data: {
         homeId,
         staffId: dto.staff_id,
@@ -118,6 +118,7 @@ export class RotaService {
       },
       include: { staff: { select: { id: true, fullName: true, role: true } } },
     });
+    return this.serializeShift(created);
   }
 
   // ─── Update shift status ───────────────────────────────────────────────────
@@ -130,10 +131,11 @@ export class RotaService {
     this.assertManager(user);
     const shift = await this.findShiftOrFail(homeId, shiftId);
 
-    return this.prisma.shift.update({
+    const updated = await this.prisma.shift.update({
       where: { id: shiftId },
       data: { status: dto.status as any, notes: dto.notes ?? shift.notes },
     });
+    return this.serializeShift(updated);
   }
 
   // ─── Delete (cancel) shift ─────────────────────────────────────────────────
@@ -341,13 +343,19 @@ export class RotaService {
       }, 0);
 
       return {
-        staff,
-        scheduled_hours: Number(scheduledHours.toFixed(2)),
-        worked_hours:    Number(workedHours.toFixed(2)),
-        total_shifts:    staffShifts.length,
-        absent_shifts:   staffShifts.filter((s) => s.status === 'absent').length,
+        staff: {
+          id:              staff.id,
+          full_name:       staff.fullName,
+          role:            staff.role,
+          employment_type: staff.employmentType ?? null,
+          phone:           staff.phone ?? null,
+        },
+        scheduled_hours:  Number(scheduledHours.toFixed(2)),
+        worked_hours:     Number(workedHours.toFixed(2)),
+        total_shifts:     staffShifts.length,
+        absent_shifts:    staffShifts.filter((s) => s.status === 'absent').length,
         completed_shifts: staffShifts.filter((s) => s.status === 'completed').length,
-        shifts:          staffShifts,
+        shifts:           staffShifts.map((s) => this.serializeShift(s)),
       };
     });
   }
@@ -362,7 +370,7 @@ export class RotaService {
     sunday.setDate(monday.getDate() + 6);
     sunday.setHours(23, 59, 59, 999);
 
-    return this.prisma.shift.findMany({
+    const shifts = await this.prisma.shift.findMany({
       where: {
         homeId,
         staffId: user.id,   // staff member sees only own shifts
@@ -372,6 +380,7 @@ export class RotaService {
       include: { attendance: true },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     });
+    return shifts.map((s) => this.serializeShift(s));
   }
 
   // ─── Private helpers ───────────────────────────────────────────────────────

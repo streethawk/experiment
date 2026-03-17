@@ -16,6 +16,7 @@ import { UsersService } from '../users/users.service';
 import { PRISMA_SERVICE } from '../../database/database.module';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { RefreshJwtPayload } from './strategies/jwt-refresh.strategy';
+import { EmailService } from '../email/email.service';
 
 // ─── Response shapes ──────────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly emailService: EmailService,
   ) {
     const authConfig = config.get('app.auth');
     this.maxFailedAttempts = authConfig.maxFailedAttempts;
@@ -271,9 +273,7 @@ export class AuthService {
       this.resetExpiryMinutes,
     );
 
-    // TODO: Emit event for email service
-    // this.eventEmitter.emit('auth.password_reset_requested', { user, rawToken });
-    this.logger.log(`Password reset requested for ${email} — token: ${rawToken} (dev only)`);
+    await this.emailService.sendPasswordReset(user.email, rawToken);
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

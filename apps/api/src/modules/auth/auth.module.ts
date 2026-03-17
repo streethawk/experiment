@@ -7,6 +7,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { UsersModule } from '../users/users.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UsersModule } from '../users/users.module';
     // provides its own secret so access + refresh tokens use different keys
     JwtModule.register({}),
     UsersModule,
+    EmailModule,
   ],
   providers: [
     AuthService,
